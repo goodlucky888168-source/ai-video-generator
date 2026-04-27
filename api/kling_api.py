@@ -51,8 +51,10 @@ def generate_video(
         "Content-Type": "application/json"
     }
 
+    has_image = image_base64 is not None and str(image_base64).strip() != ""
+
     # ✅ 根據是否有圖片選擇不同 API
-    if image_base64:
+    if has_image:
         endpoint = "https://api.klingai.com/v1/videos/image2video"
         payload = {
             "model": "kling-v1",
@@ -61,6 +63,7 @@ def generate_video(
             "duration": duration,
             "aspect_ratio": aspect_ratio
         }
+        api_type = "image2video"
     else:
         endpoint = "https://api.klingai.com/v1/videos/text2video"
         payload = {
@@ -69,15 +72,16 @@ def generate_video(
             "duration": duration,
             "aspect_ratio": aspect_ratio
         }
+        api_type = "text2video"
 
     res = requests.post(endpoint, headers=headers, json=payload, timeout=30)
+    res.raise_for_status()
     data = res.json()
 
     if "data" not in data:
         raise Exception(f"Kling API 回應異常：{data}")
 
     task_id = data["data"]["task_id"]
-    api_type = "image2video" if image_base64 else "text2video"
 
     # ✅ 輪詢等待結果
     max_polls = 60
@@ -93,6 +97,7 @@ def generate_video(
             headers=headers,
             timeout=30
         )
+        poll.raise_for_status()
         poll_data = poll.json()
 
         if "data" not in poll_data:
@@ -106,6 +111,6 @@ def generate_video(
         if status == "succeed":
             return poll_data["data"]["task_result"]["videos"][0]["url"]
         elif status == "failed":
-            raise Exception("影片生成失敗")
+            raise Exception(f"影片生成失敗：{poll_data}")
 
     raise Exception("影片生成超時（超過 5 分鐘）")
