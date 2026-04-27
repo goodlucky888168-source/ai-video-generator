@@ -84,13 +84,13 @@ def analyze_prompt(user_input: str, openai_key: str, image_base64: str = None) -
                 '  "music_mood": "calm 或 happy 或 sad 或 epic 或 romantic",\n'
                 '  "music_genre": "ambient 或 cinematic 或 pop 或 jazz",\n'
                 '  "storyboard": [\n'
-                '    {\n'
+                "    {\n"
                 '      "scene": "英文場景描述",\n'
                 '      "characters": ["A"],\n'
                 '      "duration": 5,\n'
                 '      "narration": "中文旁白"\n'
-                '    }\n'
-                '  ]\n'
+                "    }\n"
+                "  ]\n"
                 "}"
             )
         })
@@ -104,10 +104,9 @@ def analyze_prompt(user_input: str, openai_key: str, image_base64: str = None) -
 
     raw = response.choices[0].message.content.strip()
 
-    # 清除可能的 markdown code block
-    raw = re.sub(r"^```json\s*", "", raw)
-    raw = re.sub(r"^```\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
+    # 清除可能的 markdown code block（更穩）
+    raw = re.sub(r"^\s*```(?:json)?\s*", "", raw)
+    raw = re.sub(r"\s*```\s*$", "", raw)
     raw = raw.strip()
 
     try:
