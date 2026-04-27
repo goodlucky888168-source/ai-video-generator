@@ -20,7 +20,6 @@ def check_password() -> bool:
         username = st.text_input("帳號", key="login_username")
         password = st.text_input("密碼", type="password", key="login_password")
 
-        # ✅ 防暴力破解：限制嘗試次數
         if "login_attempts" not in st.session_state:
             st.session_state.login_attempts = 0
         if "lockout_until" not in st.session_state:
@@ -45,7 +44,6 @@ def check_password() -> bool:
                 attempts = st.session_state.login_attempts
                 st.error(f"帳號或密碼錯誤（第 {attempts} 次）")
 
-                # 超過 5 次鎖定 60 秒
                 if attempts >= 5:
                     st.session_state.lockout_until = now + 60
                     st.session_state.login_attempts = 0
@@ -56,18 +54,9 @@ def check_password() -> bool:
 
 # ==================== API 金鑰設定面板 ====================
 def render_api_settings(keys: dict):
-    """欄位式 API 金鑰顯示（唯讀，方便確認）"""
     with st.expander("⚙️ API 金鑰設定狀態", expanded=False):
         st.caption(f"目前模式：{'🟢 主要 (main)' if keys['mode'] == 'main' else '🟡 備用 (backup)'}")
         st.caption("如需切換模式，請至 Streamlit Cloud → Secrets 修改 `API_MODE`")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("**金鑰名稱**")
-            key_names = ["OpenAI", "Kling Access", "Kling Secret",
-                         "ElevenLabs", "Beatoven", "Google Drive Folder"]
-        with col2:
-            st.markdown("**狀態**")
 
         key_map = {
             "OpenAI":              keys["openai"],
@@ -142,11 +131,11 @@ def main():
     st.subheader("🎛️ 生成選項")
     col_opt_a, col_opt_b, col_opt_c = st.columns(3)
     with col_opt_a:
-        enable_voice   = st.checkbox("🎙️ 生成語音旁白", value=True)
+        enable_voice  = st.checkbox("🎙️ 生成語音旁白", value=True)
     with col_opt_b:
-        enable_music   = st.checkbox("🎵 生成背景音樂 (Beatoven)", value=True)
+        enable_music  = st.checkbox("🎵 生成背景音樂 (Beatoven)", value=True)
     with col_opt_c:
-        enable_gdrive  = st.checkbox("☁️ 儲存至 Google Drive", value=True)
+        enable_gdrive = st.checkbox("☁️ 儲存至 Google Drive", value=True)
 
     st.divider()
 
@@ -156,11 +145,15 @@ def main():
             st.warning("⚠️ 請輸入影片描述")
             return
 
-        # 轉換圖片
+        # ==================== 圖片處理 ====================
         image_base64 = None
         if uploaded_image:
-            uploaded_image.seek(0)
-            image_base64 = image_to_base64(uploaded_image)
+            try:
+                image_base64 = image_to_base64(uploaded_image)
+                st.caption(f"✅ 圖片已處理，Base64 長度：{len(image_base64)} 字元")
+            except Exception as e:
+                st.error(f"❌ 圖片處理失敗：{e}")
+                return
 
         results = {}
 
@@ -226,7 +219,9 @@ def main():
                 keys["kling_access"],
                 keys["kling_secret"],
                 image_base64,
-                video_progress_cb
+                video_progress_cb,
+                video_duration,
+                aspect_ratio
             )
 
             # 語音任務
