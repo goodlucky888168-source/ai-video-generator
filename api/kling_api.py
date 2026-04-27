@@ -5,6 +5,7 @@ import hmac
 import hashlib
 import base64
 
+
 def generate_kling_token(access_key: str, secret_key: str) -> str:
     """產生 Kling AI JWT Token"""
     header = base64.urlsafe_b64encode(
@@ -35,13 +36,14 @@ def generate_video(
     kling_access: str,
     kling_secret: str,
     image_base64: str = None,
-    progress_callback=None
+    progress_callback=None,
+    duration: int = 5,
+    aspect_ratio: str = "16:9"
 ) -> str:
     """
     生成影片
-    - 有圖片時使用 image2video（角色一致性更好）
+    - 有圖片時使用 image2video
     - 無圖片時使用 text2video
-    - progress_callback(i, total, status): 進度回呼函式
     """
     token = generate_kling_token(kling_access, kling_secret)
     headers = {
@@ -54,18 +56,18 @@ def generate_video(
         endpoint = "https://api.klingai.com/v1/videos/image2video"
         payload = {
             "model": "kling-v1",
-            "image": image_base64,        # ✅ 純 Base64，不加 data: 前綴
+            "image": image_base64,
             "prompt": video_prompt,
-            "duration": 5,
-            "aspect_ratio": "16:9"
+            "duration": duration,
+            "aspect_ratio": aspect_ratio
         }
     else:
         endpoint = "https://api.klingai.com/v1/videos/text2video"
         payload = {
             "model": "kling-v1",
             "prompt": video_prompt,
-            "duration": 5,
-            "aspect_ratio": "16:9"
+            "duration": duration,
+            "aspect_ratio": aspect_ratio
         }
 
     res = requests.post(endpoint, headers=headers, json=payload, timeout=30)
@@ -77,7 +79,7 @@ def generate_video(
     task_id = data["data"]["task_id"]
     api_type = "image2video" if image_base64 else "text2video"
 
-    # ✅ 輪詢 + 進度回呼
+    # ✅ 輪詢等待結果
     max_polls = 60
     for i in range(max_polls):
         time.sleep(5)
