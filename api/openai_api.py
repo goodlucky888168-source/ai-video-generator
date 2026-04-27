@@ -6,13 +6,33 @@ import base64
 
 def image_to_base64(image_file) -> str:
     """將上傳的圖片安全轉換為 Base64"""
+    # 重置檔案指標
+    image_file.seek(0)
+    
     with Image.open(image_file) as img:
-        # 統一轉為 RGB 避免 RGBA PNG 問題
-        if img.mode in ("RGBA", "P"):
+        # 統一轉為 RGB
+        if img.mode in ("RGBA", "P", "LA", "L"):
             img = img.convert("RGB")
+        
+        # 壓縮到 Kling 可接受大小（最長邊 1024px）
+        max_size = 1024
+        w, h = img.size
+        if w > max_size or h > max_size:
+            ratio = min(max_size / w, max_size / h)
+            new_w = int(w * ratio)
+            new_h = int(h * ratio)
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+        
         buffered = io.BytesIO()
         img.save(buffered, format="JPEG", quality=85)
-        return base64.b64encode(buffered.getvalue()).decode()
+        buffered.seek(0)
+        
+        # ✅ 確保無換行符的純淨 Base64
+        img_bytes = buffered.getvalue()
+        img_b64 = base64.b64encode(img_bytes).decode("utf-8")
+        
+        return img_b64
+
 
 def analyze_prompt(user_input: str, openai_key: str, image_base64: str = None) -> dict:
     """
@@ -81,8 +101,6 @@ def analyze_prompt(user_input: str, openai_key: str, image_base64: str = None) -
         raise Exception(f"OpenAI 錯誤：{data['error']['message']}")
 
     raw = data["choices"][0]["message"]["content"].strip()
-    # 清除可能的 markdown code block
     raw = raw.replace("```json", "").replace("```", "").strip()
 
     return json.loads(raw)
-
