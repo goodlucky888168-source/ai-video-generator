@@ -7,11 +7,13 @@ from googleapiclient.http import MediaIoBaseUpload
 
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
+
 def get_drive_service(sa_json_str: str):
     """從 JSON 字串建立 Google Drive 服務"""
     sa_info = json.loads(sa_json_str)
     credentials = service_account.Credentials.from_service_account_info(
-        sa_info, scopes=SCOPES
+        sa_info,
+        scopes=SCOPES
     )
     return build("drive", "v3", credentials=credentials)
 
@@ -47,6 +49,7 @@ def upload_to_drive(
     ).execute()
 
     # 設定公開讀取權限
+    # （若你的 Drive/GCP policy 限制匿名分享，這裡可能拋錯）
     service.permissions().create(
         fileId=file["id"],
         body={"type": "anyone", "role": "reader"}
@@ -63,8 +66,7 @@ def upload_video_from_url(
 ) -> str:
     """從 URL 下載影片後上傳至 Google Drive"""
     res = requests.get(video_url, timeout=120)
-    if res.status_code != 200:
-        raise Exception(f"影片下載失敗：{res.status_code}")
+    res.raise_for_status()
 
     return upload_to_drive(
         content=res.content,
@@ -73,4 +75,3 @@ def upload_video_from_url(
         folder_id=folder_id,
         sa_json_str=sa_json_str
     )
-
