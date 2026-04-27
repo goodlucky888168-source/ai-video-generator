@@ -19,7 +19,6 @@ def generate_kling_token(access_key: str, secret_key: str) -> str:
         }).encode()
     ).rstrip(b"=").decode()
 
-    # ✅ 修正：使用正確的 hmac.new
     signature = base64.urlsafe_b64encode(
         hmac.new(
             secret_key.encode(),
@@ -42,7 +41,7 @@ def generate_video(
     生成影片
     - 有圖片時使用 image2video（角色一致性更好）
     - 無圖片時使用 text2video
-    - progress_callback(i, total): 進度回呼函式
+    - progress_callback(i, total, status): 進度回呼函式
     """
     token = generate_kling_token(kling_access, kling_secret)
     headers = {
@@ -55,7 +54,7 @@ def generate_video(
         endpoint = "https://api.klingai.com/v1/videos/image2video"
         payload = {
             "model": "kling-v1",
-            "image": f"data:image/jpeg;base64,{image_base64}",
+            "image": image_base64,        # ✅ 純 Base64，不加 data: 前綴
             "prompt": video_prompt,
             "duration": 5,
             "aspect_ratio": "16:9"
@@ -83,7 +82,7 @@ def generate_video(
     for i in range(max_polls):
         time.sleep(5)
 
-        # 刷新 token 避免過期
+        # 每次刷新 token 避免過期
         token = generate_kling_token(kling_access, kling_secret)
         headers["Authorization"] = f"Bearer {token}"
 
@@ -108,4 +107,3 @@ def generate_video(
             raise Exception("影片生成失敗")
 
     raise Exception("影片生成超時（超過 5 分鐘）")
-
